@@ -166,7 +166,15 @@ def suggest_description(
         parsed = json.loads(content) if isinstance(content, str) else content
         suggestion = parsed.get("description", "")
     except Exception as exc:  # noqa: BLE001
-        flash(request, f"LLM suggest failed: {exc}", "error")
+        flash(
+            request,
+            (
+                f"LLM suggest failed: {exc}. "
+                f"Confirm Ollama is running and the drafting model is installed "
+                f"(Settings shows the model name; run `ollama pull {model}`)."
+            ),
+            "error",
+        )
         return redirect("/cvs")
     ctx = base_context(request, db, active="cvs", cv=cv, suggestion=suggestion)
     return templates.TemplateResponse(request, "cv_suggest.html", ctx)

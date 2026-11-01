@@ -67,6 +67,11 @@ class OllamaClient:
                     if resp.status_code >= 400 and "think" in (resp.text or "").lower():
                         payload.pop("think", None)
                         resp = client.post("/api/chat", json=payload)
+                    if resp.status_code == 404:
+                        raise RuntimeError(
+                            f"Model '{model}' not found in Ollama. "
+                            f"Run: ollama pull {model}"
+                        )
                     resp.raise_for_status()
                     data = resp.json()
                 self.last_latency_ms = (time.perf_counter() - t0) * 1000
@@ -78,8 +83,18 @@ class OllamaClient:
                     self.last_eval_count,
                 )
                 return data
+            except RuntimeError:
+                raise
             except Exception as exc:  # noqa: BLE001
                 last_err = exc
+                # Don't retry hard 404 model-missing wrapped above; other 404s still retry once
+                if "404" in str(exc) and attempt == 0:
+                    # Likely missing model — stop retrying and give pull hint
+                    raise RuntimeError(
+                        f"Ollama returned 404 for model '{model}'. "
+                        f"Install it with: ollama pull {model} "
+                        f"(then check Settings → drafting model matches `ollama list`)."
+                    ) from exc
                 time.sleep(0.5 * (attempt + 1))
         raise RuntimeError(f"Ollama chat failed: {last_err}")
 
