@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Guide — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">Workflow Guide</h1>
+<p class="text-sm text-slate-600 mb-6 max-w-2xl">
+  Checklist for a smooth China-professor outreach run. Ask the local Ollama model
+  what to do next — it knows MailPilot’s playbook (import → CVs → campaign → dry-run).
+</p>
+
+<section class="mb-8">
+  <h2 class="text-lg font-medium mb-3">Setup checklist</h2>
+  <ul class="space-y-2 text-sm max-w-xl">
+    {% for item in state.checklist %}
+    <li class="flex items-start gap-2">
+      <span class="mt-0.5 {% if item.done %}text-emerald-600{% else %}text-slate-400{% endif %}">
+        {% if item.done %}✓{% else %}○{% endif %}
+      </span>
+      <span>
+        <a class="underline" href="{{ item.href }}">{{ item.label }}</a>
+        {% if not item.done %}<span class="text-slate-500"> — still needed</span>{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="mb-8 grid md:grid-cols-3 gap-4 text-sm">
+  <div class="rounded border border-slate-200 bg-white px-4 py-3">
+    <p class="text-slate-500 text-xs uppercase tracking-wide">Contacts</p>
+    <p class="text-xl font-semibold">{{ state.contacts.total }}</p>
+    <p class="text-xs text-slate-500 mt-1">china region: {{ state.contacts.china_region }}</p>
+  </div>
+  <div class="rounded border border-slate-200 bg-white px-4 py-3">
+    <p class="text-slate-500 text-xs uppercase tracking-wide">Accounts / CVs</p>
+    <p class="text-xl font-semibold">{{ state.accounts.total }} / {{ state.cvs.total }}</p>
+    <p class="text-xs text-slate-500 mt-1">owners: {{ state.owners|join(', ') or '—' }}</p>
+  </div>
+  <div class="rounded border border-slate-200 bg-white px-4 py-3">
+    <p class="text-slate-500 text-xs uppercase tracking-wide">Ollama</p>
+    {% if state.ollama.ok %}
+    <p class="text-emerald-700 font-medium">Reachable</p>
+    {% if state.ollama.missing %}
+    <p class="text-amber-700 text-xs mt-1">Missing: {{ state.ollama.missing|join(', ') }}</p>
+    {% endif %}
+    {% else %}
+    <p class="text-rose-700 font-medium">Down</p>
+    <p class="text-xs text-rose-600 mt-1">{{ state.ollama.error }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="mb-8 max-w-2xl">
+  <h2 class="text-lg font-medium mb-3">Coach advice
+    <span class="text-xs font-normal text-slate-500">({{ advice.source }})</span>
+  </h2>
+  <p class="text-sm mb-3">{{ advice.summary }}</p>
+  {% if advice.next_steps %}
+  <ol class="list-decimal pl-5 text-sm space-y-1 mb-3">
+    {% for s in advice.next_steps %}<li>{{ s }}</li>{% endfor %}
+  </ol>
+  {% endif %}
+  {% if advice.warnings %}
+  <ul class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 space-y-1">
+    {% for w in advice.warnings %}<li>{{ w }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  <form method="post" action="/guide/ask" class="mt-4 space-y-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <label class="block text-sm">Ask the local LLM
+      <textarea name="question" rows="3" class="w-full border rounded px-3 py-2 mt-1"
+        placeholder="e.g. Why did my CSV import miss country / groups? How do Usama and Faizan split the list?">{{ question }}</textarea>
+    </label>
+    <button class="bg-slate-900 text-white rounded px-4 py-2 text-sm">Ask coach</button>
+  </form>
+</section>
+
+<section class="max-w-2xl text-sm text-slate-700 space-y-2">
+  <h2 class="text-lg font-medium text-slate-900">Professors CSV quick notes</h2>
+  <p>Upload <code>professors_complete_verified.csv</code> on Contacts. MailPilot detects the China schema and fills the options that looked “missing”:</p>
+  <ul class="list-disc pl-5 space-y-1">
+    <li><strong>country / timezone</strong> — source file had no country column → set to China / Asia/Shanghai</li>
+    <li><strong>region type</strong> — defaults to <code>china</code> (China CSC template)</li>
+    <li><strong>groups</strong> — <code>professor, china, botany</code> plus <code>usama_batch</code> / <code>faizan_batch</code></li>
+    <li><strong>English name</strong> — prefers <code>professor_name_en</code>; missing EN tagged <code>needs_english_name</code></li>
+    <li><strong>not stated</strong> title/research cleaned; empty research tagged <code>needs_research</code></li>
+  </ul>
+  <p class="text-xs text-slate-500">CLI: <code>python scripts/prepare_professors_csv.py path/to.csv -o samples/professors_mailpilot_ready.csv</code></p>
+  <p><a class="underline" href="/docs/user-guide">Full user guide</a> · see also <code>USER_GUIDE.md</code> in the repo.</p>
+</section>
+{% endblock %}

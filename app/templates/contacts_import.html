@@ -3,11 +3,36 @@
 {% block content %}
 <h1 class="text-2xl font-semibold mb-2">Map columns</h1>
 <p class="text-sm text-slate-600 mb-4">File: {{ staging.filename }} · preview first 20 rows</p>
+
+{% if staging.china_detected %}
+<div class="mb-4 rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+  <p class="font-medium">China professors CSV detected</p>
+  <p class="mt-1">{{ staging.import_note }}</p>
+  {% if staging.qa %}
+  <ul class="mt-2 list-disc pl-5 text-xs">
+    <li>Input rows: {{ staging.qa.input_rows }} → ready: {{ staging.qa.output_rows }}</li>
+    <li>Missing English name: {{ staging.qa.missing_english_name }} (tagged <code>needs_english_name</code>)</li>
+    <li>Missing / not-stated research: {{ staging.qa.missing_research }} (tagged <code>needs_research</code>)</li>
+    <li>Missing / not-stated title: {{ staging.qa.missing_title }} (defaulted to Professor)</li>
+    <li>Invalid emails skipped: {{ staging.qa.invalid_emails }} · duplicates: {{ staging.qa.duplicate_emails }}</li>
+    <li>Batches: usama={{ staging.qa.usama_batch }} · faizan={{ staging.qa.faizan_batch }}</li>
+  </ul>
+  {% endif %}
+  <p class="mt-2 text-xs">Leave <strong>Assign groups</strong> empty to keep per-row batch tags. Region defaults to <strong>china</strong>.</p>
+</div>
+{% else %}
+<div class="mb-4 rounded border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+  Tip: verified China professor exports (<code>university_en</code>, <code>research_direction</code>, …)
+  are auto-normalized. Or run
+  <code class="text-xs">python scripts/prepare_professors_csv.py input.csv -o ready.csv</code>
+  first.
+</div>
+{% endif %}
+
 <form method="post" action="/contacts/import/commit" class="space-y-4 text-sm">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
   <div class="grid md:grid-cols-3 gap-3">
-    {% set fields = ['email','full_name','title','institution','department','country','research_summary','recent_papers','profile_url','groups'] %}
-    {% for f in fields %}
+    {% for f in map_fields %}
     <label>{{ f }}
       <select name="map_{{ f }}" class="w-full border rounded px-2 py-1">
         <option value="">—</option>
@@ -28,13 +53,15 @@
     </label>
     <label>Region type
       <select name="region_type" class="w-full border rounded px-2 py-1">
-        <option value="western">western</option>
-        <option value="china">china</option>
-        <option value="other">other</option>
+        <option value="western" {% if staging.default_region=='western' %}selected{% endif %}>western</option>
+        <option value="china" {% if staging.default_region=='china' %}selected{% endif %}>china</option>
+        <option value="other" {% if staging.default_region=='other' %}selected{% endif %}>other</option>
       </select>
     </label>
-    <label>Assign groups (comma-separated)
-      <input name="groups" class="w-full border rounded px-2 py-1" placeholder="professor, china" />
+    <label>Assign groups (comma-separated, merged with CSV groups)
+      <input name="groups" class="w-full border rounded px-2 py-1"
+             value="{{ staging.default_groups }}"
+             placeholder="{% if staging.china_detected %}leave empty to keep CSV groups{% else %}professor, china{% endif %}" />
     </label>
   </div>
   <button class="bg-slate-900 text-white rounded px-4 py-2">Import</button>

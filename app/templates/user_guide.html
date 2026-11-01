@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}User guide — MailPilot{% endblock %}
+{% block content %}
+<p class="text-sm mb-4"><a class="underline" href="/guide">← Workflow Guide</a></p>
+<article class="max-w-3xl prose-slate">
+  {{ guide_html | safe }}
+</article>
+{% endblock %}

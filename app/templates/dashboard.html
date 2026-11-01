@@ -50,7 +50,7 @@
   </table>
 </section>
 
-<section>
+<section class="mb-8">
   <h2 class="text-lg font-medium mb-3">Ollama</h2>
   {% if health.ok %}
   <p class="text-sm text-emerald-700">Reachable. Models: {{ health.models|join(', ') or 'none listed' }}</p>
@@ -62,5 +62,15 @@
   <p class="text-sm text-rose-700">Ollama not reachable: {{ health.error }}</p>
   <ul class="text-sm font-mono mt-1">{% for cmd in health.pull_commands %}<li>{{ cmd }}</li>{% endfor %}</ul>
   {% endif %}
+</section>
+
+<section>
+  <h2 class="text-lg font-medium mb-3">Next steps</h2>
+  <p class="text-sm text-slate-600">
+    New here or importing professors?
+    <a class="underline" href="/guide">Open the Workflow Guide</a>
+    (checklist + local LLM coach) or read
+    <a class="underline" href="/docs/user-guide">USER_GUIDE</a>.
+  </p>
 </section>
 {% endblock %}

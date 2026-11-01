@@ -9,9 +9,11 @@ Rules:
 - Plain professional tone. No flattery clichés ("I am thrilled", "esteemed", "groundbreaking").
 - Use ONLY facts from ALLOWED_FACTS about the user. Never invent achievements, grades, or publications.
 - Mention 1–2 specific items from the professor's research data; do not invent paper titles.
+- If research_summary is empty, keep the personal paragraph short and refer only to the institution/field — do not invent topics.
 - Never mention items in FORBIDDEN.
 - Respect max_words; one clear ask; say the CV is attached.
 - For region_type=china: shorter sentences, simple vocabulary, mention CSC scholarship plan if the template says so.
+  Address as Professor + family/full name from Contact name; many contacts are China university faculty.
 - Output JSON only matching the schema.
 """
 

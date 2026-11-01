@@ -2,13 +2,26 @@
 {% block title %}Drafts — MailPilot{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-semibold mb-4">Drafts</h1>
+<p class="text-sm text-slate-600 mb-3">Drafts appear only after <strong>Campaigns → your campaign → Generate drafts</strong>. Generation needs Ollama running.</p>
 {% for j in jobs %}
-<div class="text-sm mb-2">Job #{{ j.id }}: {{ j.status }} {{ j.progress }}/{{ j.total }}
-  <form method="post" action="/drafts/jobs/{{ j.id }}/pause" class="inline ml-2">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <button class="underline text-xs">{{ 'Resume' if j.status=='paused' else 'Pause' }}</button>
-  </form>
+<div class="text-sm mb-3 rounded border px-3 py-2
+  {% if j.status == 'error' %}border-rose-200 bg-rose-50 text-rose-900
+  {% elif j.status == 'done' %}border-emerald-200 bg-emerald-50
+  {% else %}border-slate-200 bg-white{% endif %}">
+  <div>
+    Job #{{ j.id }}: <strong>{{ j.status }}</strong> {{ j.progress }}/{{ j.total }}
+    {% if j.campaign_id %}<span class="text-slate-500">· campaign {{ j.campaign_id }}</span>{% endif %}
+    <form method="post" action="/drafts/jobs/{{ j.id }}/pause" class="inline ml-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <button class="underline text-xs">{{ 'Resume' if j.status=='paused' else 'Pause' }}</button>
+    </form>
+  </div>
+  {% if j.error %}<p class="text-xs mt-1 whitespace-pre-wrap">{{ j.error }}</p>{% endif %}
 </div>
+{% else %}
+<p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-4">
+  No generation jobs yet. Open your campaign and click <strong>Generate drafts</strong>.
+</p>
 {% endfor %}
 <form method="post" action="/drafts/bulk-approve" class="mb-4 text-sm flex flex-wrap gap-3 items-center">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />

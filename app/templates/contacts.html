@@ -2,6 +2,11 @@
 {% block title %}Contacts — MailPilot{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-semibold mb-4">Contacts</h1>
+<p class="text-sm text-slate-600 mb-4 max-w-2xl">
+  Upload <code>professors_complete_verified.csv</code> directly — China schema is auto-detected
+  (region, country, groups, EN names). Stuck? Open <a class="underline" href="/guide">Guide</a>
+  and ask the local LLM coach.
+</p>
 <div class="flex flex-wrap gap-4 mb-6 items-end">
   <form method="get" class="flex gap-2 text-sm">
     <input name="q" value="{{ q }}" placeholder="Search" class="border rounded px-3 py-2" />

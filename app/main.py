@@ -26,6 +26,7 @@ from app.routes import (
     cvs,
     dashboard,
     drafts,
+    guide,
     inbox,
     queue,
     settings,
@@ -108,6 +109,7 @@ app.include_router(campaigns.router)
 app.include_router(drafts.router)
 app.include_router(queue.router)
 app.include_router(settings.router)
+app.include_router(guide.router)
 
 
 @app.middleware("http")
