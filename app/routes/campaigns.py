@@ -149,11 +149,31 @@ def generate_drafts(
     if not camp:
         return redirect("/campaigns")
     contacts = _filter_contacts(db, camp.contact_filter or {})
+    if not contacts:
+        flash(
+            request,
+            "No eligible contacts to draft. Import professors on Contacts, or edit the "
+            "campaign group filter (empty group = all). Then Generate again.",
+            "error",
+        )
+        return redirect(f"/campaigns/{campaign_id}")
+    if not camp.account_ids:
+        flash(
+            request,
+            "Campaign has no sending accounts. Edit/recreate it with an owner key or account IDs.",
+            "error",
+        )
+        return redirect(f"/campaigns/{campaign_id}")
     assignment = assign_accounts_round_robin(
         db, [c.id for c in contacts], list(camp.account_ids or [])
     )
     enqueue_generation(db, campaign_id, [c.id for c in contacts], assignment)
-    flash(request, f"Queued draft generation for {len(contacts)} contacts.", "success")
+    flash(
+        request,
+        f"Queued draft generation for {len(contacts)} contacts — watch progress on Drafts "
+        "(needs Ollama + drafting model).",
+        "success",
+    )
     return redirect(f"/campaigns/{campaign_id}")
 
 

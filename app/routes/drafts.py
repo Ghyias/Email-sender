@@ -83,6 +83,7 @@ def _generation_loop() -> None:
     assert SessionLocal is not None
     while not _gen_stop.is_set():
         session = SessionLocal()
+        job_id: int | None = None
         try:
             job = session.scalar(
                 select(GenerationJob)
@@ -98,11 +99,21 @@ def _generation_loop() -> None:
                 session.close()
                 _gen_stop.wait(2)
                 continue
+            job_id = job.id
             job.status = "running"
             session.commit()
             _process_job(session, job)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
             session.rollback()
+            if job_id is not None:
+                try:
+                    failed = session.get(GenerationJob, job_id)
+                    if failed and failed.status in {"pending", "running"}:
+                        failed.status = "error"
+                        failed.error = str(exc)[:2000]
+                        session.commit()
+                except Exception:  # noqa: BLE001
+                    session.rollback()
         finally:
             session.close()
         _gen_stop.wait(0.5)
@@ -163,28 +174,38 @@ def _process_job(session: Session, job: GenerationJob) -> None:
             "research_summary": contact.research_summary,
             "recent_papers": contact.recent_papers,
         }
-        result = generate_draft(
-            contact=contact_dict,
-            llm_instructions=tpl.llm_instructions or "",
-            allowed_facts=allowed,
-            forbidden_phrases=forbidden,
-            region_type=contact.region_type or tpl.region_type,
-            language=tpl.language,
-            max_words=tpl.max_words or 250,
-            model=model,
-            temperature=temperature,
-            client=client,
-        )
-        research = f"{contact.research_summary}\n{contact.recent_papers}"
-        cv_row, match = pick_cv_for_account(
-            session,
-            account,
-            research_text=research,
-            contact_groups=list(contact.groups or []),
-            embedding_model=emb_model,
-            rules=rules if isinstance(rules, dict) else {},
-            client=client,
-        )
+        try:
+            result = generate_draft(
+                contact=contact_dict,
+                llm_instructions=tpl.llm_instructions or "",
+                allowed_facts=allowed,
+                forbidden_phrases=forbidden,
+                region_type=contact.region_type or tpl.region_type,
+                language=tpl.language,
+                max_words=tpl.max_words or 250,
+                model=model,
+                temperature=temperature,
+                client=client,
+            )
+            research = f"{contact.research_summary}\n{contact.recent_papers}"
+            cv_row, match = pick_cv_for_account(
+                session,
+                account,
+                research_text=research,
+                contact_groups=list(contact.groups or []),
+                embedding_model=emb_model,
+                rules=rules if isinstance(rules, dict) else {},
+                client=client,
+            )
+        except Exception as exc:  # noqa: BLE001
+            job.status = "error"
+            job.error = (
+                f"Failed on contact {cid} ({contact.email}): {exc}. "
+                "Check Ollama is running and Settings → drafting model matches `ollama list` "
+                "(e.g. ollama pull qwen3.5:4b)."
+            )[:2000]
+            session.commit()
+            return
         draft = Draft(
             campaign_id=job.campaign_id,
             contact_id=cid,
@@ -208,6 +229,11 @@ def _process_job(session: Session, job: GenerationJob) -> None:
         job.progress = i + 1
         session.commit()
     job.status = "done"
+    if not ids:
+        job.error = (
+            "No eligible contacts for this campaign. Import contacts and/or clear the "
+            "group filter, then click Generate drafts again."
+        )
     session.commit()
 
 

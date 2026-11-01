@@ -2,11 +2,16 @@
 {% block title %}{{ campaign.name }} — MailPilot{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-semibold mb-2">{{ campaign.name }}</h1>
-<p class="text-sm text-slate-600 mb-4">{{ contact_count }} eligible contacts · status {{ campaign.status }}{% if campaign.paused %} · paused{% endif %}</p>
+<p class="text-sm text-slate-600 mb-2">{{ contact_count }} eligible contacts · status {{ campaign.status }}{% if campaign.paused %} · paused{% endif %}</p>
+{% if contact_count == 0 %}
+<p class="text-sm text-rose-700 mb-4">No one to draft. Import contacts first, or recreate the campaign with an empty / matching group filter.</p>
+{% else %}
+<p class="text-sm text-slate-500 mb-4">Creating the campaign does not write drafts — click <strong>Generate drafts</strong> (needs Ollama).</p>
+{% endif %}
 <div class="flex gap-3 text-sm mb-6">
   <form method="post" action="/campaigns/{{ campaign.id }}/generate">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <button class="bg-slate-900 text-white rounded px-3 py-2">Generate drafts</button>
+    <button class="bg-slate-900 text-white rounded px-3 py-2" {% if contact_count == 0 %}disabled{% endif %}>Generate drafts</button>
   </form>
   <form method="post" action="/campaigns/{{ campaign.id }}/pause">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
