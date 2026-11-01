@@ -110,13 +110,11 @@ def _generation_loop() -> None:
 
 def _process_job(session: Session, job: GenerationJob) -> None:
     from app.db import get_setting
+    from app.scheduling.senders import pick_cv_for_account, profile_for_owner
 
     assignment = get_setting(session, f"gen_assign_{job.id}", {}) or {}
     # keys may be strings from JSON
     assignment = {int(k): int(v) for k, v in assignment.items()}
-    profile = session.scalar(select(UserProfile).limit(1))
-    allowed = list((profile.facts_allowed if profile else None) or [])
-    forbidden_default = list((profile.facts_forbidden if profile else None) or ["GPA", "CGPA", "grade point"])
     model = str(get_setting(session, "drafting_model", "qwen3.5:4b"))
     emb_model = str(get_setting(session, "embedding_model", "qwen3-embedding:0.6b"))
     temperature = float(get_setting(session, "temperature", 0.4) or 0.4)
@@ -130,17 +128,6 @@ def _process_job(session: Session, job: GenerationJob) -> None:
         if camp and camp.template_id:
             camp_tpl = session.get(Template, camp.template_id)
 
-    cvs = list(session.scalars(select(CvVariant)).all())
-    candidates = [
-        CvCandidate(
-            key=cv.key,
-            description=cv.description or cv.label,
-            keywords=list(cv.keywords or []),
-            embedding=unpack_embedding(cv.embedding),
-        )
-        for cv in cvs
-    ]
-    cv_by_key = {cv.key: cv for cv in cvs}
     rules = get_setting(session, "cv_rules", {}) or {}
 
     ids = list(job.contact_ids or [])
@@ -160,8 +147,14 @@ def _process_job(session: Session, job: GenerationJob) -> None:
             job.status = "done"
             session.commit()
             return
+        account_id = assignment.get(cid)
+        account = session.get(Account, account_id) if account_id else None
+        profile = profile_for_owner(session, account.owner_key if account else "")
+        allowed = list((profile.facts_allowed if profile else None) or [])
+        forbidden_default = list(
+            (profile.facts_forbidden if profile else None) or ["GPA", "CGPA", "grade point"]
+        )
         forbidden = list(tpl.forbidden_phrases or []) + forbidden_default
-        # dedupe
         forbidden = list(dict.fromkeys(forbidden))
         contact_dict = {
             "full_name": contact.full_name,
@@ -183,16 +176,15 @@ def _process_job(session: Session, job: GenerationJob) -> None:
             client=client,
         )
         research = f"{contact.research_summary}\n{contact.recent_papers}"
-        match = match_cv(
+        cv_row, match = pick_cv_for_account(
+            session,
+            account,
             research_text=research,
             contact_groups=list(contact.groups or []),
-            candidates=candidates,
             embedding_model=emb_model,
             rules=rules if isinstance(rules, dict) else {},
             client=client,
         )
-        cv_row = cv_by_key.get(match.cv_key)
-        account_id = assignment.get(cid)
         draft = Draft(
             campaign_id=job.campaign_id,
             contact_id=cid,

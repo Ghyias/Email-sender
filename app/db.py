@@ -107,10 +107,34 @@ def init_db(engine: Engine | None = None) -> None:
     """Create tables, FTS5, seed defaults."""
     eng = engine or get_engine()
     Base.metadata.create_all(eng)
+    _ensure_columns(eng)
     _setup_fts5(eng)
     with Session(eng) as session:
         _seed_defaults(session)
         session.commit()
+
+
+def _ensure_columns(engine: Engine) -> None:
+    """Add multi-sender columns on existing SQLite DBs (idempotent)."""
+    alterations = [
+        ("accounts", "owner_key", "ALTER TABLE accounts ADD COLUMN owner_key VARCHAR(64) DEFAULT ''"),
+        (
+            "accounts",
+            "default_cv_variant_id",
+            "ALTER TABLE accounts ADD COLUMN default_cv_variant_id INTEGER",
+        ),
+        ("cv_variants", "owner_key", "ALTER TABLE cv_variants ADD COLUMN owner_key VARCHAR(64) DEFAULT ''"),
+        (
+            "user_profile",
+            "owner_key",
+            "ALTER TABLE user_profile ADD COLUMN owner_key VARCHAR(64) DEFAULT ''",
+        ),
+    ]
+    with engine.begin() as conn:
+        for table, col, stmt in alterations:
+            existing = {row[1] for row in conn.execute(text(f"PRAGMA table_info({table})")).fetchall()}
+            if col not in existing:
+                conn.execute(text(stmt))
 
 
 def _setup_fts5(engine: Engine) -> None:

@@ -74,6 +74,7 @@ def create_campaign(
     name: str = Form(...),
     template_id: int = Form(...),
     account_ids: str = Form(""),
+    owner_key: str = Form(""),
     group: str = Form(""),
     followup_days: str = Form(""),
     send_mode: str = Form("now"),
@@ -81,7 +82,22 @@ def create_campaign(
     window_end: str = Form("11:30"),
 ) -> HTMLResponse:
     aids = [int(x) for x in account_ids.split(",") if x.strip().isdigit()]
-    filt = {"group": group, "exclude_contacted": True}
+    owner = owner_key.strip().lower()
+    if not aids:
+        # Auto: all active accounts, optionally filtered by owner (usama/faizan)
+        q = select(Account).where(Account.active.is_(True), Account.status != "auth_failed")
+        accounts = list(db.scalars(q).all())
+        if owner:
+            accounts = [a for a in accounts if (a.owner_key or "").lower() == owner]
+        aids = [a.id for a in accounts]
+    if not aids:
+        flash(
+            request,
+            "No sending accounts selected. Tag accounts with an owner key or paste account IDs.",
+            "error",
+        )
+        return redirect("/campaigns/new")
+    filt = {"group": group, "exclude_contacted": True, "owner_key": owner}
     camp = Campaign(
         name=name,
         template_id=template_id,
@@ -95,7 +111,11 @@ def create_campaign(
     db.add(camp)
     db.commit()
     db.refresh(camp)
-    flash(request, "Campaign created. Generate drafts next.", "success")
+    flash(
+        request,
+        f"Campaign created with {len(aids)} account(s). Generate drafts next.",
+        "success",
+    )
     return redirect(f"/campaigns/{camp.id}")
 
 

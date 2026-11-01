@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from jinja2 import BaseLoader, Environment, select_autoescape
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -94,9 +94,29 @@ def save_template(
 
 
 @router.get("/profile", response_class=HTMLResponse)
-def profile_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
-    profile = db.scalar(select(UserProfile).limit(1))
-    ctx = base_context(request, db, active="settings", profile=profile)
+def profile_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    owner_key: str = "",
+) -> HTMLResponse:
+    key = owner_key.strip().lower()
+    if key:
+        profile = db.scalar(select(UserProfile).where(UserProfile.owner_key == key).limit(1))
+    else:
+        profile = db.scalar(
+            select(UserProfile)
+            .where(or_(UserProfile.owner_key == "", UserProfile.owner_key.is_(None)))
+            .limit(1)
+        )
+    profiles = db.scalars(select(UserProfile).order_by(UserProfile.owner_key)).all()
+    ctx = base_context(
+        request,
+        db,
+        active="settings",
+        profile=profile,
+        profiles=profiles,
+        owner_key=key,
+    )
     return templates.TemplateResponse(request, "profile.html", ctx)
 
 
@@ -104,6 +124,7 @@ def profile_page(request: Request, db: Session = Depends(get_db)) -> HTMLRespons
 def save_profile(
     request: Request,
     db: Session = Depends(get_db),
+    owner_key: str = Form(""),
     full_name: str = Form(""),
     short_bio: str = Form(""),
     research_interests: str = Form(""),
@@ -111,10 +132,19 @@ def save_profile(
     facts_allowed: str = Form(""),
     facts_forbidden: str = Form(""),
 ) -> HTMLResponse:
-    profile = db.scalar(select(UserProfile).limit(1))
+    key = owner_key.strip().lower()
+    if key:
+        profile = db.scalar(select(UserProfile).where(UserProfile.owner_key == key).limit(1))
+    else:
+        profile = db.scalar(
+            select(UserProfile)
+            .where(or_(UserProfile.owner_key == "", UserProfile.owner_key.is_(None)))
+            .limit(1)
+        )
     if not profile:
-        profile = UserProfile()
+        profile = UserProfile(owner_key=key)
         db.add(profile)
+    profile.owner_key = key
     profile.full_name = full_name
     profile.short_bio = short_bio
     profile.research_interests = research_interests
@@ -122,5 +152,5 @@ def save_profile(
     profile.facts_allowed = [f.strip() for f in facts_allowed.split("\n") if f.strip()]
     profile.facts_forbidden = [f.strip() for f in facts_forbidden.split("\n") if f.strip()]
     db.commit()
-    flash(request, "Profile saved.", "success")
-    return redirect("/profile")
+    flash(request, f"Profile saved for '{key or 'default'}'.", "success")
+    return redirect(f"/profile?owner_key={key}" if key else "/profile")

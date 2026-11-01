@@ -2,11 +2,11 @@
 {% block title %}Accounts — MailPilot{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-semibold mb-2">Accounts</h1>
-<p class="text-slate-600 mb-6">Add up to {{ max_accounts }} Gmail accounts with app passwords. Passwords are encrypted; never shown again.</p>
+<p class="text-slate-600 mb-4">Add up to {{ max_accounts }} Gmail accounts. Set <strong>owner</strong> (e.g. usama / faizan) so the system only attaches that person’s CVs and uses their profile when sending from that mailbox. Capacity is balanced automatically across selected accounts.</p>
 
 <div class="grid lg:grid-cols-2 gap-8">
   <section>
-    <h2 class="font-medium mb-3">Your accounts</h2>
+    <h2 class="font-medium mb-3">Your accounts ({{ accounts|length }})</h2>
     <div id="sync-status" hx-get="/accounts/sync/status" hx-trigger="every 3s" hx-swap="innerHTML">
       {% include "partials/sync_status.html" %}
     </div>
@@ -15,8 +15,11 @@
       <div class="flex justify-between items-start">
         <div>
           <div class="font-medium">{{ a.display_name }} &lt;{{ a.email }}&gt;</div>
-          <div class="text-xs text-slate-500">{{ counts.get(a.id, 0) }} messages · status {{ a.status }}
-            {% if not a.active %}· paused{% endif %}
+          <div class="text-xs text-slate-500">
+            owner: <span class="font-mono">{{ a.owner_key or '—' }}</span>
+            · {{ counts.get(a.id, 0) }} msgs
+            · sent capacity left today: {{ remaining.get(a.id, 0) }}/{{ a.daily_cap }}
+            · {{ a.status }}{% if not a.active %} · paused{% endif %}
           </div>
           {% if a.status_msg %}<div class="text-xs text-rose-600 mt-1">{{ a.status_msg }}</div>{% endif %}
         </div>
@@ -31,13 +34,22 @@
           </form>
         </div>
       </div>
-      <form method="post" action="/accounts/{{ a.id }}/update" class="mt-3 grid grid-cols-4 gap-2 text-sm">
+      <form method="post" action="/accounts/{{ a.id }}/update" class="mt-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
         <label>Cap<input name="daily_cap" type="number" value="{{ a.daily_cap }}" class="w-full border rounded px-2 py-1" /></label>
         <label>Min delay<input name="min_delay_s" type="number" value="{{ a.min_delay_s }}" class="w-full border rounded px-2 py-1" /></label>
         <label>Max delay<input name="max_delay_s" type="number" value="{{ a.max_delay_s }}" class="w-full border rounded px-2 py-1" /></label>
         <label>Display name<input name="display_name" value="{{ a.display_name }}" class="w-full border rounded px-2 py-1" /></label>
-        <button class="col-span-4 bg-slate-800 text-white rounded px-3 py-1.5 w-fit">Save</button>
+        <label>Owner key<input name="owner_key" value="{{ a.owner_key or '' }}" placeholder="usama or faizan" class="w-full border rounded px-2 py-1" /></label>
+        <label>Default CV
+          <select name="default_cv_variant_id" class="w-full border rounded px-2 py-1">
+            <option value="0">— auto / matcher —</option>
+            {% for cv in cvs %}
+            <option value="{{ cv.id }}" {% if a.default_cv_variant_id == cv.id %}selected{% endif %}>{{ cv.key }}{% if cv.owner_key %} ({{ cv.owner_key }}){% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button class="col-span-2 md:col-span-3 bg-slate-800 text-white rounded px-3 py-1.5 w-fit">Save</button>
       </form>
       <form method="post" action="/accounts/{{ a.id }}/password" class="mt-2 flex gap-2 text-sm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -56,19 +68,14 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <label class="block">Email<input name="email" type="email" required class="mt-1 w-full border rounded px-3 py-2" /></label>
       <label class="block">Display name<input name="display_name" class="mt-1 w-full border rounded px-3 py-2" /></label>
+      <label class="block">Owner key (usama / faizan)<input name="owner_key" class="mt-1 w-full border rounded px-3 py-2" placeholder="usama" /></label>
       <label class="block">App password<input name="app_password" type="password" required class="mt-1 w-full border rounded px-3 py-2" autocomplete="off" /></label>
       <label class="block">Daily cap<input name="daily_cap" type="number" value="30" min="1" max="150" class="mt-1 w-full border rounded px-3 py-2" /></label>
       <button class="bg-slate-900 text-white rounded px-4 py-2">Test &amp; save</button>
     </form>
     <div class="mt-6 text-sm text-slate-600 space-y-2">
-      <h3 class="font-medium text-slate-800">How to create an app password</h3>
-      <ol class="list-decimal ml-5 space-y-1">
-        <li>Enable 2-Step Verification on your Google account.</li>
-        <li>Open <span class="font-mono">myaccount.google.com/apppasswords</span>.</li>
-        <li>Name it <strong>MailPilot</strong> and generate.</li>
-        <li>Paste the 16-character password here (spaces are stripped).</li>
-      </ol>
-      <p>Also enable IMAP in Gmail Settings → Forwarding and POP/IMAP.</p>
+      <h3 class="font-medium text-slate-800">Multi-sender tip</h3>
+      <p>Tag 3 accounts <span class="font-mono">usama</span> and 3 <span class="font-mono">faizan</span>. Tag each CV with the same owner. Create a campaign with owner filter (or leave account IDs blank to auto-pick that owner’s mailboxes). The system spreads sends by remaining daily capacity and attaches only that owner’s CV.</p>
     </div>
   </section>
 </div>

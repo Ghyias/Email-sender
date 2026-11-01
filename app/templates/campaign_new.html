@@ -10,10 +10,13 @@
       {% for t in tpls %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}
     </select>
   </label>
-  <label class="block">Sending accounts (comma IDs)
-    <input name="account_ids" class="w-full border rounded px-2 py-1" placeholder="{% for a in accounts %}{{ a.id }}{% if not loop.last %},{% endif %}{% endfor %}" />
+  <label class="block">Owner filter (auto-select that sender’s accounts)
+    <input name="owner_key" class="w-full border rounded px-2 py-1" placeholder="usama or faizan — leave blank for all" />
   </label>
-  <p class="text-xs text-slate-500">Available: {% for a in accounts %}{{ a.id }}={{ a.email }} {% endfor %}</p>
+  <label class="block">Sending account IDs (optional override)
+    <input name="account_ids" class="w-full border rounded px-2 py-1" placeholder="leave blank to auto-pick by owner / all active" />
+  </label>
+  <p class="text-xs text-slate-500">Available: {% for a in accounts %}{{ a.id }}={{ a.email }}{% if a.owner_key %} [{{ a.owner_key }}]{% endif %} {% endfor %}</p>
   <label class="block">Contact group
     <select name="group" class="w-full border rounded px-2 py-1">
       <option value="">All eligible</option>

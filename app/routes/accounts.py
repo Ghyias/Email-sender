@@ -29,18 +29,25 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("", response_class=HTMLResponse)
 def list_accounts(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    from app.models import CvVariant
+    from app.scheduling.limits import remaining_capacity
+
     accounts = db.scalars(select(Account).order_by(Account.email)).all()
     counts = {
         a.id: db.scalar(select(func.count()).select_from(Message).where(Message.account_id == a.id))
         or 0
         for a in accounts
     }
+    remaining = {a.id: remaining_capacity(db, a) for a in accounts}
+    cvs = db.scalars(select(CvVariant).order_by(CvVariant.key)).all()
     ctx = base_context(
         request,
         db,
         active="accounts",
         accounts=accounts,
         counts=counts,
+        remaining=remaining,
+        cvs=cvs,
         max_accounts=MAX_ACCOUNTS,
         statuses=get_sync_status(),
     )
@@ -55,6 +62,7 @@ def add_account(
     display_name: str = Form(""),
     app_password: str = Form(...),
     daily_cap: int = Form(30),
+    owner_key: str = Form(""),
 ) -> HTMLResponse:
     count = db.scalar(select(func.count()).select_from(Account)) or 0
     if count >= MAX_ACCOUNTS:
@@ -81,6 +89,7 @@ def add_account(
         daily_cap=cap,
         active=True,
         status="ok",
+        owner_key=owner_key.strip().lower(),
     )
     db.add(acc)
     db.commit()
@@ -119,6 +128,8 @@ def update_account(
     min_delay_s: int = Form(90),
     max_delay_s: int = Form(240),
     display_name: str = Form(""),
+    owner_key: str = Form(""),
+    default_cv_variant_id: int = Form(0),
 ) -> HTMLResponse:
     acc = db.get(Account, account_id)
     if acc:
@@ -127,6 +138,8 @@ def update_account(
         acc.max_delay_s = max(acc.min_delay_s, int(max_delay_s))
         if display_name.strip():
             acc.display_name = display_name.strip()
+        acc.owner_key = owner_key.strip().lower()
+        acc.default_cv_variant_id = default_cv_variant_id or None
         flash(request, "Account updated.", "success")
     return redirect("/accounts")
 

@@ -45,6 +45,7 @@ async def upload_cv(
     label: str = Form(""),
     description: str = Form(""),
     keywords: str = Form(""),
+    owner_key: str = Form(""),
 ) -> HTMLResponse:
     data = await file.read()
     filename = file.filename or "cv.pdf"
@@ -73,6 +74,7 @@ async def upload_cv(
         label=label or key,
         description=description,
         keywords=kw,
+        owner_key=owner_key.strip().lower(),
         updated_at=datetime.now(timezone.utc),
     )
     db.add(cv)
@@ -118,12 +120,14 @@ def update_cv(
     label: str = Form(""),
     description: str = Form(""),
     keywords: str = Form(""),
+    owner_key: str = Form(""),
 ) -> HTMLResponse:
     cv = db.get(CvVariant, cv_id)
     if cv:
         cv.label = label or cv.label
         cv.description = description
         cv.keywords = [k.strip() for k in keywords.split(",") if k.strip()]
+        cv.owner_key = owner_key.strip().lower()
         cv.updated_at = datetime.now(timezone.utc)
         cv.embedding = None
         db.commit()

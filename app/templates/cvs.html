@@ -2,12 +2,14 @@
 {% block title %}CVs — MailPilot{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-semibold mb-4">CV library</h1>
+<p class="text-sm text-slate-600 mb-4">Set <strong>owner key</strong> on each CV (<span class="font-mono">usama</span> / <span class="font-mono">faizan</span>) so sends from that person’s accounts only attach their PDFs.</p>
 <div class="grid lg:grid-cols-2 gap-8 mb-8 text-sm">
   <form method="post" action="/cvs/upload" enctype="multipart/form-data" class="space-y-2 border p-4 rounded">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <h2 class="font-medium">Upload PDF</h2>
     <input type="file" name="file" accept=".pdf" required />
     <input name="label" placeholder="Label" class="w-full border rounded px-2 py-1" />
+    <input name="owner_key" placeholder="Owner key (usama / faizan)" class="w-full border rounded px-2 py-1" />
     <textarea name="description" placeholder="What this CV emphasises" class="w-full border rounded px-2 py-1" rows="3"></textarea>
     <input name="keywords" placeholder="keywords, comma-separated" class="w-full border rounded px-2 py-1" />
     <button class="bg-slate-900 text-white rounded px-3 py-1.5">Upload</button>
@@ -23,6 +25,7 @@
 {% for cv in cvs %}
 <div class="border-b py-4 text-sm">
   <div class="font-medium">{{ cv.key }} — {{ cv.label }}
+    <span class="text-xs font-mono ml-2">owner={{ cv.owner_key or '—' }}</span>
     {% if cv.embedding %}<span class="text-emerald-600 text-xs ml-2">embedded ({{ cv.embedding_model }})</span>
     {% else %}<span class="text-amber-600 text-xs ml-2">no embedding</span>{% endif %}
   </div>
@@ -31,6 +34,7 @@
   <form method="post" action="/cvs/{{ cv.id }}/update" class="mt-2 grid md:grid-cols-3 gap-2">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <input name="label" value="{{ cv.label }}" class="border rounded px-2 py-1" />
+    <input name="owner_key" value="{{ cv.owner_key or '' }}" placeholder="usama / faizan" class="border rounded px-2 py-1" />
     <input name="keywords" value="{{ (cv.keywords or [])|join(', ') }}" class="border rounded px-2 py-1" />
     <textarea name="description" class="border rounded px-2 py-1 md:col-span-3" rows="2">{{ cv.description }}</textarea>
     <button class="bg-slate-800 text-white rounded px-3 py-1 w-fit">Save</button>

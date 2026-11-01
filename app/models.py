@@ -55,6 +55,10 @@ class Account(Base):
     sync_window_days: Mapped[int] = mapped_column(Integer, default=365)
     status: Mapped[str] = mapped_column(String(32), default="ok")  # ok|auth_failed|error
     status_msg: Mapped[str] = mapped_column(Text, default="")
+    # Multi-sender: e.g. "usama" / "faizan" — used to bind CVs + profile to this mailbox
+    owner_key: Mapped[str] = mapped_column(String(64), default="")
+    # Points at cv_variants.id (no FK — avoids create-order issues with SQLite)
+    default_cv_variant_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     messages: Mapped[list[Message]] = relationship(back_populates="account")
 
@@ -147,12 +151,16 @@ class CvVariant(Base):
     embedding: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
     embedding_model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Same value as Account.owner_key so only that sender's CVs are chosen
+    owner_key: Mapped[str] = mapped_column(String(64), default="")
 
 
 class UserProfile(Base):
     __tablename__ = "user_profile"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # Empty = default/legacy single profile; set to "usama"/"faizan" for multi-sender
+    owner_key: Mapped[str] = mapped_column(String(64), default="")
     full_name: Mapped[str] = mapped_column(String(255), default="")
     short_bio: Mapped[str] = mapped_column(Text, default="")
     research_interests: Mapped[str] = mapped_column(Text, default="")
