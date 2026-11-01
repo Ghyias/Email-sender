@@ -14,8 +14,9 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from starlette.middleware.sessions import SessionMiddleware
 
+from app import db as app_db
 from app.config import HOST, LOGS_DIR, PORT, ensure_data_dirs, get_settings
-from app.db import SessionLocal, get_engine, get_setting, init_db
+from app.db import get_engine, get_setting, init_db
 from app.mail.imap_sync import start_account_worker, start_db_writer, stop_all_workers
 from app.models import Account
 from app.routes import (
@@ -52,7 +53,11 @@ def setup_logging() -> None:
     root.setLevel(logging.INFO)
     if not any(isinstance(h, logging.handlers.RotatingFileHandler) for h in root.handlers):
         root.addHandler(handler)
-    if not any(isinstance(h, logging.StreamHandler) and not isinstance(h, logging.handlers.RotatingFileHandler) for h in root.handlers):
+    if not any(
+        isinstance(h, logging.StreamHandler)
+        and not isinstance(h, logging.handlers.RotatingFileHandler)
+        for h in root.handlers
+    ):
         sh = logging.StreamHandler()
         sh.setFormatter(fmt)
         root.addHandler(sh)
@@ -66,13 +71,15 @@ async def lifespan(app: FastAPI):
     init_db(engine)
     backup_db_on_startup()
     start_db_writer()
-    assert SessionLocal is not None
-    start_scheduler(f"sqlite:///{get_settings().db_path}", SessionLocal)
-    # kick sync workers for active accounts
-    with SessionLocal() as session:
+    # Use module attribute — a direct import of SessionLocal stays None forever.
+    session_factory = app_db.SessionLocal
+    if session_factory is None:
+        raise RuntimeError("Database session factory failed to initialize")
+    start_scheduler(f"sqlite:///{get_settings().db_path}", session_factory)
+    with session_factory() as session:
         interval = int(get_setting(session, "sync_interval_minutes", 5) or 5)
         for acc in session.scalars(select(Account).where(Account.active.is_(True))).all():
-            start_account_worker(SessionLocal, acc.id, interval_minutes=interval)
+            start_account_worker(session_factory, acc.id, interval_minutes=interval)
     logger.info("MailPilot started on http://%s:%s", HOST, PORT)
     yield
     stop_all_workers()
