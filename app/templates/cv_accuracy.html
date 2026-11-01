@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}CV matcher accuracy — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">CV matcher accuracy</h1>
+<p class="text-sm text-slate-600 mb-4">Label 20–30 contacts with the correct CV, then compare methods.</p>
+{% if report %}
+<ul class="mb-6 text-sm">
+  {% for k,v in report.items() %}<li>{{ k }}: {{ '%.1f'|format(v*100) }}%</li>{% endfor %}
+</ul>
+{% endif %}
+<table class="min-w-full text-sm">
+  <thead class="border-b text-left text-slate-500"><tr><th class="py-2">Contact</th><th>Label</th><th></th></tr></thead>
+  <tbody>
+  {% for c in contacts %}
+  <tr class="border-b">
+    <td class="py-2">{{ c.full_name }} &lt;{{ c.email }}&gt;</td>
+    <td>{{ label_map.get(c.id, '—') }}</td>
+    <td>
+      <form method="post" action="/drafts/cv-accuracy/label" class="flex gap-2">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+        <input type="hidden" name="contact_id" value="{{ c.id }}" />
+        <select name="cv_key" class="border rounded px-2 py-1">
+          {% for cv in cvs %}<option value="{{ cv.key }}" {% if label_map.get(c.id)==cv.key %}selected{% endif %}>{{ cv.key }}</option>{% endfor %}
+        </select>
+        <button class="underline">Save</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Compose — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Compose</h1>
+<form method="post" action="/compose" class="space-y-3 max-w-xl text-sm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <label class="block">From
+    <select name="account_id" class="w-full border rounded px-2 py-1" required>
+      {% for a in accounts %}<option value="{{ a.id }}">{{ a.email }}</option>{% endfor %}
+    </select>
+  </label>
+  <label class="block">To<input name="to_addr" type="email" required class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Subject<input name="subject" required class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Body<textarea name="body" rows="12" required class="w-full border rounded px-2 py-1"></textarea></label>
+  <label class="block">Attach CV
+    <select name="cv_id" class="w-full border rounded px-2 py-1">
+      <option value="0">None</option>
+      {% for c in cvs %}<option value="{{ c.id }}">{{ c.key }}</option>{% endfor %}
+    </select>
+  </label>
+  <button class="bg-slate-900 text-white rounded px-4 py-2">Send (respects dry-run)</button>
+</form>
+{% endblock %}

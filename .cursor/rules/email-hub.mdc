@@ -1,0 +1,21 @@
+---
+description: MailPilot project rules (local multi-Gmail client + local LLM outreach)
+globs: ["**/*.py", "**/*.html", "**/*.md"]
+alwaysApply: true
+---
+
+# Project rules for MailPilot
+
+- The source of truth is `EMAIL_HUB_SPEC.md`. When a request conflicts with it, follow the spec and say so.
+- Python 3.11, FastAPI, Jinja2 + HTMX + Alpine + Tailwind CDN. Do NOT introduce React, Node, or a JS build step.
+- SQLAlchemy 2.0 style (`select()`, typed `Mapped[]`). SQLite WAL. All times stored UTC.
+- Server binds to 127.0.0.1 only. Never 0.0.0.0.
+- Never log, print, or return app passwords. Encrypt with Fernet; key in OS keyring.
+- IMAP reads use BODY.PEEK. Find Gmail folders via SPECIAL-USE flags, never hard-coded names.
+- Never IMAP-APPEND sent mail to Sent (Gmail SMTP already saves it).
+- Every outgoing message: 1 recipient for campaigns, generated Message-ID stored before send, respects per-account rolling-24h cap checked at dequeue time.
+- Dry-run mode is ON by default.
+- LLM is used only for drafting, rewriting drafts, and CV selection. All LLM calls go through `app/llm/ollama_client.py`, use a JSON schema `format`, `think: false`, and are mockable. Tests must never require Ollama or network.
+- Keep functions small; type hints everywhere; docstrings on public functions.
+- After each change, run `pytest -q` and fix failures before finishing.
+- Prefer editing existing files over creating new ones; keep the folder layout from the spec.

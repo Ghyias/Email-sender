@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Queue — MailPilot{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+  <h1 class="text-2xl font-semibold">Send queue</h1>
+  <div class="flex gap-3 text-sm">
+    <a href="/compose" class="underline">Compose</a>
+    <form method="post" action="/queue/process"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button class="bg-slate-900 text-white rounded px-3 py-1.5">Process due now</button></form>
+  </div>
+</div>
+<form method="post" action="/queue/schedule" class="mb-6 text-sm border rounded p-3 space-y-2 max-w-xl">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <h2 class="font-medium">Schedule approved drafts</h2>
+  <label class="block">Draft IDs (comma)<input name="draft_ids" class="w-full border rounded px-2 py-1" placeholder="1,2,3" /></label>
+  <label class="block">Mode
+    <select name="mode" class="w-full border rounded px-2 py-1">
+      <option value="now">Send now, spread out</option>
+      <option value="at">Specific UTC datetime</option>
+      <option value="recipient_local">Recipient local window</option>
+    </select>
+  </label>
+  <label class="block">When UTC<input name="when_utc" class="w-full border rounded px-2 py-1" placeholder="2026-11-02T09:00:00+00:00" /></label>
+  <div class="grid grid-cols-2 gap-2">
+    <label>Start<input name="window_start" value="09:00" class="w-full border rounded px-2 py-1" /></label>
+    <label>End<input name="window_end" value="11:30" class="w-full border rounded px-2 py-1" /></label>
+  </div>
+  <button class="bg-slate-800 text-white rounded px-3 py-1.5">Continue to confirmation</button>
+</form>
+<table class="min-w-full text-sm">
+  <thead class="text-left text-slate-500 border-b"><tr><th class="py-2">When UTC</th><th>To</th><th>Account</th><th>Status</th><th>Error</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr class="border-b">
+    <td class="py-2">{{ r.item.scheduled_utc }}</td>
+    <td>{{ r.contact.email if r.contact else '—' }}</td>
+    <td>{{ r.account.email if r.account else '—' }}</td>
+    <td>{{ r.item.status }}</td>
+    <td class="text-xs text-rose-600">{{ r.item.last_error }}</td>
+    <td>
+      {% if r.item.status in ['pending','missed'] %}
+      <form method="post" action="/queue/{{ r.item.id }}/cancel"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button class="underline text-xs">Cancel</button></form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="py-4 text-slate-500">Queue empty.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

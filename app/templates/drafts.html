@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Drafts — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Drafts</h1>
+{% for j in jobs %}
+<div class="text-sm mb-2">Job #{{ j.id }}: {{ j.status }} {{ j.progress }}/{{ j.total }}
+  <form method="post" action="/drafts/jobs/{{ j.id }}/pause" class="inline ml-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button class="underline text-xs">{{ 'Resume' if j.status=='paused' else 'Pause' }}</button>
+  </form>
+</div>
+{% endfor %}
+<form method="post" action="/drafts/bulk-approve" class="mb-4 text-sm flex flex-wrap gap-3 items-center">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <input type="hidden" name="draft_ids" id="bulk-ids" value="" />
+  <label class="flex items-center gap-1"><input type="checkbox" name="reviewed_flagged" value="1" /> I reviewed flagged drafts</label>
+  <button class="bg-slate-900 text-white rounded px-3 py-1.5" onclick="document.getElementById('bulk-ids').value=[...document.querySelectorAll('.draft-check:checked')].map(e=>e.value).join(',')">Bulk approve selected</button>
+  <a href="/queue" class="underline">Schedule approved →</a>
+</form>
+<table class="min-w-full text-sm">
+  <thead class="text-left text-slate-500 border-b">
+    <tr><th></th><th class="py-2">Contact</th><th>Account</th><th>Subject</th><th>CV</th><th>Flags</th><th>Status</th></tr>
+  </thead>
+  <tbody>
+  {% for row in rows %}
+  <tr class="border-b">
+    <td><input type="checkbox" class="draft-check" value="{{ row.draft.id }}" {% if row.draft.status!='draft' %}disabled{% endif %} /></td>
+    <td class="py-2"><a class="underline" href="/drafts/{{ row.draft.id }}">{{ row.contact.full_name if row.contact else row.draft.contact_id }}</a></td>
+    <td>{{ row.account.email if row.account else '—' }}</td>
+    <td>{{ row.draft.subject }}</td>
+    <td class="text-xs">{{ row.cv.key if row.cv else '—' }} ({{ '%.2f'|format(row.draft.cv_confidence) }}){% if row.draft.cv_needs_review %} ⚠{% endif %}</td>
+    <td class="text-xs text-amber-700">{{ (row.draft.validation_flags or [])|join(', ') }}</td>
+    <td>{{ row.draft.status }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="py-4 text-slate-500">No drafts.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

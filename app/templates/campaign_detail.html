@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ campaign.name }} — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">{{ campaign.name }}</h1>
+<p class="text-sm text-slate-600 mb-4">{{ contact_count }} eligible contacts · status {{ campaign.status }}{% if campaign.paused %} · paused{% endif %}</p>
+<div class="flex gap-3 text-sm mb-6">
+  <form method="post" action="/campaigns/{{ campaign.id }}/generate">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button class="bg-slate-900 text-white rounded px-3 py-2">Generate drafts</button>
+  </form>
+  <form method="post" action="/campaigns/{{ campaign.id }}/pause">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button class="underline">{{ 'Resume' if campaign.paused else 'Pause' }} campaign</button>
+  </form>
+  <a class="underline py-2" href="/drafts?campaign_id={{ campaign.id }}">Review drafts</a>
+</div>
+<table class="min-w-full text-sm">
+  <thead class="border-b text-slate-500 text-left"><tr><th class="py-2">ID</th><th>Subject</th><th>Status</th><th>Flags</th></tr></thead>
+  <tbody>
+  {% for d in drafts %}
+  <tr class="border-b"><td class="py-2"><a class="underline" href="/drafts/{{ d.id }}">{{ d.id }}</a></td><td>{{ d.subject }}</td><td>{{ d.status }}</td><td class="text-xs">{{ (d.validation_flags or [])|join(', ') }}</td></tr>
+  {% else %}
+  <tr><td colspan="4" class="py-4 text-slate-500">No drafts yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

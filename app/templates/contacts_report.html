@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Import report — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Import report</h1>
+{% if report %}
+<ul class="text-sm space-y-1 mb-4">
+  <li>Imported: {{ report.imported }}</li>
+  <li>Updated: {{ report.updated }}</li>
+  <li>Skipped duplicates: {{ report.skipped_duplicate }}</li>
+  <li>Invalid: {{ report.invalid }}</li>
+</ul>
+<a class="underline text-sm" href="/contacts/import/rejects.csv">Download rejects CSV</a>
+{% else %}
+<p class="text-slate-500">No report.</p>
+{% endif %}
+<p class="mt-4"><a class="underline" href="/contacts">Back to contacts</a></p>
+{% endblock %}

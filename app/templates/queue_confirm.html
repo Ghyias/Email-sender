@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Confirm schedule — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Confirm schedule</h1>
+<p class="mb-2 text-sm">About to queue <strong>{{ total }}</strong> messages (mode={{ mode }}).</p>
+<ul class="text-sm mb-4">
+  {% for email, n in by_account.items() %}
+  <li>{{ email }}: {{ n }}</li>
+  {% endfor %}
+</ul>
+<form method="post" action="/queue/schedule">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <input type="hidden" name="draft_ids" value="{{ draft_ids }}" />
+  <input type="hidden" name="mode" value="{{ mode }}" />
+  <input type="hidden" name="when_utc" value="{{ when_utc }}" />
+  <input type="hidden" name="window_start" value="{{ window_start }}" />
+  <input type="hidden" name="window_end" value="{{ window_end }}" />
+  <input type="hidden" name="confirm" value="1" />
+  <button class="bg-emerald-700 text-white rounded px-4 py-2">Confirm &amp; schedule</button>
+  <a href="/drafts" class="underline ml-3 text-sm">Cancel</a>
+</form>
+{% endblock %}

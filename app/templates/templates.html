@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Templates — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Templates</h1>
+<div class="grid lg:grid-cols-3 gap-6">
+  <aside class="text-sm">
+    <ul class="space-y-1 mb-4">
+      {% for t in tpls %}
+      <li><a class="underline {% if current and current.id==t.id %}font-semibold{% endif %}" href="/templates?edit={{ t.id }}">{{ t.name }}</a></li>
+      {% endfor %}
+    </ul>
+    <a class="underline" href="/templates">+ New</a>
+    <p class="mt-4"><a class="underline" href="/profile">User profile</a></p>
+  </aside>
+  <section class="lg:col-span-2 text-sm">
+    <form method="post" action="/templates/save" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="template_id" value="{{ current.id if current else 0 }}" />
+      <label class="block">Name<input name="name" value="{{ current.name if current else '' }}" required class="w-full border rounded px-2 py-1" /></label>
+      <div class="grid grid-cols-3 gap-2">
+        <label>Language<select name="language" class="w-full border rounded px-2 py-1"><option value="en" {% if current and current.language=='en' %}selected{% endif %}>en</option><option value="zh" {% if current and current.language=='zh' %}selected{% endif %}>zh</option></select></label>
+        <label>Region<select name="region_type" class="w-full border rounded px-2 py-1"><option value="western">western</option><option value="china" {% if current and current.region_type=='china' %}selected{% endif %}>china</option><option value="other">other</option></select></label>
+        <label>Max words<input type="number" name="max_words" value="{{ current.max_words if current else 250 }}" class="w-full border rounded px-2 py-1" /></label>
+      </div>
+      <label class="block">Subject template<textarea name="subject_template" rows="2" class="w-full border rounded px-2 py-1 font-mono text-xs">{{ current.subject_template if current else '' }}</textarea></label>
+      <label class="block">Body template<textarea name="body_template" rows="8" class="w-full border rounded px-2 py-1 font-mono text-xs">{{ current.body_template if current else '' }}</textarea></label>
+      <label class="block">LLM instructions<textarea name="llm_instructions" rows="4" class="w-full border rounded px-2 py-1">{{ current.llm_instructions if current else '' }}</textarea></label>
+      <label class="block">Forbidden phrases (comma)<input name="forbidden_phrases" value="{{ (current.forbidden_phrases or [])|join(', ') if current else 'GPA, CGPA, grade point' }}" class="w-full border rounded px-2 py-1" /></label>
+      <button class="bg-slate-900 text-white rounded px-4 py-2">Save</button>
+    </form>
+    {% if current %}
+    <div class="mt-6 border-t pt-4">
+      <h2 class="font-medium mb-2">Live preview</h2>
+      <form method="get" class="flex gap-2 mb-3">
+        <input type="hidden" name="edit" value="{{ current.id }}" />
+        <select name="preview_contact" class="border rounded px-2 py-1">
+          {% for c in contacts %}<option value="{{ c.id }}" {% if preview_contact==c.id %}selected{% endif %}>{{ c.full_name or c.email }}</option>{% endfor %}
+        </select>
+        <button class="underline">Preview</button>
+      </form>
+      <div class="bg-slate-50 border rounded p-3">
+        <div class="font-medium">{{ preview_subject }}</div>
+        <pre class="whitespace-pre-wrap mt-2 text-xs">{{ preview_body }}</pre>
+      </div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

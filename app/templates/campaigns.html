@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Campaigns — MailPilot{% endblock %}
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+  <h1 class="text-2xl font-semibold">Campaigns</h1>
+  <a href="/campaigns/new" class="bg-slate-900 text-white rounded px-3 py-2 text-sm">New campaign</a>
+</div>
+<table class="min-w-full text-sm">
+  <thead class="text-left text-slate-500 border-b"><tr><th class="py-2">Name</th><th>Status</th><th>Created</th><th></th></tr></thead>
+  <tbody>
+  {% for c in campaigns %}
+  <tr class="border-b"><td class="py-2"><a class="underline" href="/campaigns/{{ c.id }}">{{ c.name }}</a></td><td>{{ c.status }}{% if c.paused %} (paused){% endif %}</td><td>{{ c.created_at }}</td><td></td></tr>
+  {% else %}
+  <tr><td colspan="4" class="py-4 text-slate-500">No campaigns.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
