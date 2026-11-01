@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Draft {{ draft.id }} — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-xl font-semibold mb-4">Draft #{{ draft.id }}</h1>
+<div class="grid lg:grid-cols-3 gap-4 text-sm">
+  <section class="border rounded p-3 bg-slate-50">
+    <h2 class="font-medium mb-2">Contact</h2>
+    {% if contact %}
+    <p>{{ contact.full_name }} &lt;{{ contact.email }}&gt;</p>
+    <p>{{ contact.title }} · {{ contact.institution }}</p>
+    <pre class="whitespace-pre-wrap text-xs mt-2">{{ contact.research_summary }}
+
+{{ contact.recent_papers }}</pre>
+    {% endif %}
+  </section>
+  <section class="border rounded p-3 lg:col-span-1">
+    <form method="post" action="/drafts/{{ draft.id }}/save" class="space-y-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <label class="block">Subject<input name="subject" value="{{ draft.subject }}" class="w-full border rounded px-2 py-1" /></label>
+      <label class="block">Body<textarea name="body_text" rows="16" class="w-full border rounded px-2 py-1 font-mono text-xs">{{ draft.body_text }}</textarea></label>
+      <label class="block">CV
+        <select name="cv_variant_id" class="w-full border rounded px-2 py-1">
+          {% for c in cvs %}<option value="{{ c.id }}" {% if draft.cv_variant_id==c.id %}selected{% endif %}>{{ c.key }}</option>{% endfor %}
+        </select>
+      </label>
+      <button class="bg-slate-900 text-white rounded px-3 py-1.5">Save</button>
+    </form>
+    {% if draft.validation_flags %}
+    <p class="mt-2 text-amber-700 text-xs">Flags: {{ draft.validation_flags|join(', ') }}</p>
+    {% endif %}
+  </section>
+  <section class="border rounded p-3 bg-slate-50">
+    <h2 class="font-medium mb-2">CV reason</h2>
+    <p>{{ draft.cv_reason }}</p>
+    <p class="text-xs mt-1">Confidence {{ '%.2f'|format(draft.cv_confidence) }}{% if draft.cv_needs_review %} · needs review{% endif %}</p>
+    <pre class="text-xs mt-2">{{ draft.cv_scores }}</pre>
+    <div class="mt-4 space-y-2">
+      <form method="post" action="/drafts/{{ draft.id }}/regenerate"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><input type="hidden" name="mode" value="regenerate" /><button class="underline">Regenerate</button></form>
+      <form method="post" action="/drafts/{{ draft.id }}/regenerate"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><input type="hidden" name="mode" value="shorter" /><button class="underline">Make shorter</button></form>
+      <form method="post" action="/drafts/{{ draft.id }}/regenerate"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><input type="hidden" name="mode" value="formal" /><button class="underline">More formal</button></form>
+      <form method="post" action="/drafts/{{ draft.id }}/approve"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button class="bg-emerald-700 text-white rounded px-3 py-1">Approve</button></form>
+      <form method="post" action="/drafts/{{ draft.id }}/reject"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button class="text-rose-700 underline">Reject</button></form>
+    </div>
+  </section>
+</div>
+{% endblock %}

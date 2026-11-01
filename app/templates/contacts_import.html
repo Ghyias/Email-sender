@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Map columns — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">Map columns</h1>
+<p class="text-sm text-slate-600 mb-4">File: {{ staging.filename }} · preview first 20 rows</p>
+<form method="post" action="/contacts/import/commit" class="space-y-4 text-sm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <div class="grid md:grid-cols-3 gap-3">
+    {% set fields = ['email','full_name','title','institution','department','country','research_summary','recent_papers','profile_url','groups'] %}
+    {% for f in fields %}
+    <label>{{ f }}
+      <select name="map_{{ f }}" class="w-full border rounded px-2 py-1">
+        <option value="">—</option>
+        {% for h in staging.headers %}
+        <option value="{{ h }}" {% if staging.mapping.get(f)==h %}selected{% endif %}>{{ h }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% endfor %}
+  </div>
+  <div class="grid md:grid-cols-3 gap-3">
+    <label>Duplicate policy
+      <select name="policy" class="w-full border rounded px-2 py-1">
+        <option value="fill-empty">Fill empty fields</option>
+        <option value="skip">Skip duplicates</option>
+        <option value="overwrite">Overwrite</option>
+      </select>
+    </label>
+    <label>Region type
+      <select name="region_type" class="w-full border rounded px-2 py-1">
+        <option value="western">western</option>
+        <option value="china">china</option>
+        <option value="other">other</option>
+      </select>
+    </label>
+    <label>Assign groups (comma-separated)
+      <input name="groups" class="w-full border rounded px-2 py-1" placeholder="professor, china" />
+    </label>
+  </div>
+  <button class="bg-slate-900 text-white rounded px-4 py-2">Import</button>
+</form>
+<div class="mt-6 overflow-x-auto">
+  <table class="min-w-full text-xs">
+    <thead><tr>{% for h in staging.headers %}<th class="text-left pr-2">{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in staging.preview %}
+      <tr class="border-t">{% for h in staging.headers %}<td class="pr-2 py-1">{{ row.get(h,'') }}</td>{% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

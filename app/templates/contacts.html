@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Contacts — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Contacts</h1>
+<div class="flex flex-wrap gap-4 mb-6 items-end">
+  <form method="get" class="flex gap-2 text-sm">
+    <input name="q" value="{{ q }}" placeholder="Search" class="border rounded px-3 py-2" />
+    <select name="group" class="border rounded px-2 py-2">
+      <option value="">All groups</option>
+      {% for g in all_groups %}<option value="{{ g }}" {% if group==g %}selected{% endif %}>{{ g }}</option>{% endfor %}
+    </select>
+    <button class="bg-slate-900 text-white rounded px-3 py-2">Search</button>
+  </form>
+  <form method="post" action="/contacts/import/upload" enctype="multipart/form-data" class="flex gap-2 text-sm items-center">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="file" name="file" accept=".csv,.xlsx,.xls,.txt" required />
+    <button class="bg-slate-800 text-white rounded px-3 py-2">Upload import</button>
+  </form>
+</div>
+<table class="min-w-full text-sm">
+  <thead class="text-left text-slate-500 border-b">
+    <tr><th class="py-2">Name</th><th>Email</th><th>Institution</th><th>Groups</th><th>Flags</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for c in contacts %}
+    <tr class="border-b border-slate-100">
+      <td class="py-2 pr-3">{{ c.full_name }}</td>
+      <td class="pr-3">{{ c.email }}</td>
+      <td class="pr-3">{{ c.institution }}</td>
+      <td class="pr-3">{{ (c.groups or [])|join(', ') }}</td>
+      <td class="pr-3 text-xs">{% if c.do_not_contact %}DNC {% endif %}{% if c.bounced %}bounced {% endif %}{% if c.last_reply_utc %}replied{% endif %}</td>
+      <td>
+        <form method="post" action="/contacts/{{ c.id }}/toggle-dnc">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button class="underline text-xs">Toggle DNC</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="py-4 text-slate-500">No contacts.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

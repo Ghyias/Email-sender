@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Confirm CV description — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-xl font-semibold mb-4">Confirm suggested description for {{ cv.key }}</h1>
+<form method="post" action="/cvs/{{ cv.id }}/confirm-suggest" class="space-y-3 max-w-xl">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <textarea name="description" rows="4" class="w-full border rounded px-3 py-2" required>{{ suggestion }}</textarea>
+  <button class="bg-slate-900 text-white rounded px-4 py-2">Confirm &amp; save</button>
+  <a href="/cvs" class="underline ml-3 text-sm">Cancel</a>
+</form>
+{% endblock %}

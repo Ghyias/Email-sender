@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Dashboard</h1>
+
+<section class="mb-8">
+  <h2 class="text-lg font-medium mb-3">Accounts</h2>
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="text-left text-slate-500 border-b">
+        <tr><th class="py-2 pr-4">Email</th><th class="py-2 pr-4">Synced</th><th class="py-2 pr-4">Sent (24h)/cap</th><th class="py-2 pr-4">Last sync</th><th class="py-2">Status</th></tr>
+      </thead>
+      <tbody>
+        {% for row in account_rows %}
+        <tr class="border-b border-slate-100">
+          <td class="py-2 pr-4">{{ row.account.email }}</td>
+          <td class="py-2 pr-4">{{ row.synced }}</td>
+          <td class="py-2 pr-4">{{ row.sent_today }} / {{ row.account.daily_cap }}</td>
+          <td class="py-2 pr-4">{{ row.account.last_sync_at or '—' }}</td>
+          <td class="py-2">{{ row.account.status }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="py-4 text-slate-500">No accounts yet. <a class="underline" href="/accounts">Add one</a>.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="mb-8">
+  <h2 class="text-lg font-medium mb-3">Campaigns</h2>
+  <table class="min-w-full text-sm">
+    <thead class="text-left text-slate-500 border-b">
+      <tr><th class="py-2 pr-4">Name</th><th class="py-2 pr-4">Drafted</th><th class="py-2 pr-4">Approved</th><th class="py-2 pr-4">Sent</th><th class="py-2 pr-4">Replied</th><th class="py-2">Bounced</th></tr>
+    </thead>
+    <tbody>
+      {% for f in funnel %}
+      <tr class="border-b border-slate-100">
+        <td class="py-2 pr-4"><a class="underline" href="/campaigns/{{ f.campaign.id }}">{{ f.campaign.name }}</a></td>
+        <td class="py-2 pr-4">{{ f.drafted }}</td>
+        <td class="py-2 pr-4">{{ f.approved }}</td>
+        <td class="py-2 pr-4">{{ f.sent }}</td>
+        <td class="py-2 pr-4">{{ f.replied }}</td>
+        <td class="py-2">{{ f.bounced }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="py-4 text-slate-500">No campaigns.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2 class="text-lg font-medium mb-3">Ollama</h2>
+  {% if health.ok %}
+  <p class="text-sm text-emerald-700">Reachable. Models: {{ health.models|join(', ') or 'none listed' }}</p>
+  {% if health.missing %}
+  <p class="text-sm text-amber-700 mt-1">Missing models — run:</p>
+  <ul class="text-sm font-mono mt-1">{% for cmd in health.pull_commands %}<li>{{ cmd }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% else %}
+  <p class="text-sm text-rose-700">Ollama not reachable: {{ health.error }}</p>
+  <ul class="text-sm font-mono mt-1">{% for cmd in health.pull_commands %}<li>{{ cmd }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endblock %}

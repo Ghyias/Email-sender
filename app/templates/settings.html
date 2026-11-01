@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Settings — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">Settings</h1>
+<p class="text-sm text-slate-600 mb-4">Server bound to {{ host }} · data: {{ data_dir }}</p>
+<form method="post" action="/settings" class="space-y-3 max-w-xl text-sm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <label class="block">Timezone<input name="timezone_name" value="{{ values.timezone }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Sync interval (minutes)<input type="number" name="sync_interval_minutes" value="{{ values.sync_interval_minutes }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Sync window (days)<input type="number" name="sync_window_days" value="{{ values.sync_window_days }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Ollama URL<input name="ollama_url" value="{{ values.ollama_url }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Drafting model<input name="drafting_model" value="{{ values.drafting_model }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Embedding model<input name="embedding_model" value="{{ values.embedding_model }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Temperature<input type="number" step="0.1" name="temperature" value="{{ values.temperature }}" class="w-full border rounded px-2 py-1" /></label>
+  <input type="hidden" name="dry_run" value="0" />
+  <label class="flex items-center gap-2"><input type="checkbox" name="dry_run" value="1" {% if values.dry_run %}checked{% endif %} /> Dry-run mode (write .eml instead of SMTP)</label>
+  <label class="block">Default daily cap<input type="number" name="default_daily_cap" value="{{ values.default_daily_cap }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Default min delay s<input type="number" name="default_min_delay_s" value="{{ values.default_min_delay_s }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Default max delay s<input type="number" name="default_max_delay_s" value="{{ values.default_max_delay_s }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Attachment filename pattern<input name="attachment_filename_pattern" value="{{ values.attachment_filename_pattern }}" class="w-full border rounded px-2 py-1" /></label>
+  <button class="bg-slate-900 text-white rounded px-4 py-2">Save</button>
+</form>
+<div class="mt-8 space-y-3 text-sm">
+  <a class="underline" href="/settings/export.xlsx">Export contacts / drafts / send_log (XLSX)</a>
+  <form method="post" action="/settings/wipe-mail" onsubmit="return confirm('Wipe local mail cache?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button class="text-rose-700 underline">Wipe local mail cache</button>
+  </form>
+  <p><a class="underline" href="/profile">Edit user profile</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Profile — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-2">User profile</h1>
+<p class="text-sm text-slate-600 mb-4">Create one profile per sender (<span class="font-mono">usama</span>, <span class="font-mono">faizan</span>). Drafts from that person’s accounts use their facts and name.</p>
+<form method="get" class="mb-4 text-sm flex gap-2 items-end">
+  <label>Load owner
+    <input name="owner_key" value="{{ owner_key }}" placeholder="usama" class="border rounded px-2 py-1" />
+  </label>
+  <button class="underline">Load</button>
+  {% if profiles %}
+  <span class="text-slate-500">Existing: {% for p in profiles %}<a class="underline ml-1" href="/profile?owner_key={{ p.owner_key }}">{{ p.owner_key or 'default' }}</a>{% endfor %}</span>
+  {% endif %}
+</form>
+<form method="post" action="/profile" class="space-y-3 max-w-xl text-sm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <label class="block">Owner key<input name="owner_key" value="{{ owner_key or (profile.owner_key if profile else '') }}" placeholder="usama or faizan (blank = default)" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Full name<input name="full_name" value="{{ profile.full_name if profile else '' }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="block">Short bio<textarea name="short_bio" rows="3" class="w-full border rounded px-2 py-1">{{ profile.short_bio if profile else '' }}</textarea></label>
+  <label class="block">Research interests<textarea name="research_interests" rows="3" class="w-full border rounded px-2 py-1">{{ profile.research_interests if profile else '' }}</textarea></label>
+  <label class="block">Default signature<textarea name="signature_default" rows="3" class="w-full border rounded px-2 py-1">{{ profile.signature_default if profile else '' }}</textarea></label>
+  <label class="block">Allowed facts (one per line)<textarea name="facts_allowed" rows="5" class="w-full border rounded px-2 py-1">{{ (profile.facts_allowed or [])|join('\n') if profile else '' }}</textarea></label>
+  <label class="block">Forbidden phrases (one per line)<textarea name="facts_forbidden" rows="4" class="w-full border rounded px-2 py-1">{{ (profile.facts_forbidden or ['GPA','CGPA','grade point'])|join('\n') if profile else 'GPA\nCGPA\ngrade point' }}</textarea></label>
+  <button class="bg-slate-900 text-white rounded px-4 py-2">Save</button>
+</form>
+{% endblock %}

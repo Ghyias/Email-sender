@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Inbox — MailPilot{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-4">Inbox</h1>
+<form method="get" class="grid md:grid-cols-4 gap-2 text-sm mb-4 bg-white border border-slate-200 p-3 rounded">
+  <label>Accounts
+    <select name="account" multiple class="w-full border rounded px-2 py-1 h-20">
+      {% for a in accounts %}
+      <option value="{{ a.id }}" {% if a.id in filters.account %}selected{% endif %}>{{ a.email }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Preset
+    <select name="preset" class="w-full border rounded px-2 py-1">
+      <option value="">—</option>
+      <option value="today" {% if filters.preset=='today' %}selected{% endif %}>Today</option>
+      <option value="7d" {% if filters.preset=='7d' %}selected{% endif %}>7 days</option>
+      <option value="30d" {% if filters.preset=='30d' %}selected{% endif %}>30 days</option>
+    </select>
+  </label>
+  <label>From date<input type="date" name="date_from" value="{{ filters.date_from }}" class="w-full border rounded px-2 py-1" /></label>
+  <label>To date<input type="date" name="date_to" value="{{ filters.date_to }}" class="w-full border rounded px-2 py-1" /></label>
+  <label>Sender<input name="sender" value="{{ filters.sender }}" class="w-full border rounded px-2 py-1" placeholder="addr@edu" /></label>
+  <label>Domain<input name="domain" value="{{ filters.domain }}" class="w-full border rounded px-2 py-1" placeholder="*.edu.cn" /></label>
+  <label>Group
+    <select name="group" class="w-full border rounded px-2 py-1">
+      <option value="">—</option>
+      {% for g in groups %}<option value="{{ g }}" {% if filters.group==g %}selected{% endif %}>{{ g }}</option>{% endfor %}
+    </select>
+  </label>
+  <label>Direction
+    <select name="direction" class="w-full border rounded px-2 py-1">
+      <option value="">Any</option>
+      <option value="received" {% if filters.direction=='received' %}selected{% endif %}>Received</option>
+      <option value="sent" {% if filters.direction=='sent' %}selected{% endif %}>Sent by me</option>
+    </select>
+  </label>
+  <label>Reply status
+    <select name="reply_status" class="w-full border rounded px-2 py-1">
+      <option value="">—</option>
+      <option value="replies" {% if filters.reply_status=='replies' %}selected{% endif %}>Replies to my outreach</option>
+      <option value="awaiting" {% if filters.reply_status=='awaiting' %}selected{% endif %}>Outreach awaiting reply</option>
+      <option value="awaiting_days" {% if filters.reply_status=='awaiting_days' %}selected{% endif %}>Awaiting &gt; N days</option>
+    </select>
+  </label>
+  <label>Awaiting days<input type="number" name="awaiting_days" value="{{ filters.awaiting_days }}" class="w-full border rounded px-2 py-1" /></label>
+  <label>Label<input name="label" value="{{ filters.label }}" class="w-full border rounded px-2 py-1" /></label>
+  <label>Full-text<input name="q" value="{{ filters.q }}" class="w-full border rounded px-2 py-1" /></label>
+  <label class="flex items-center gap-2 mt-5"><input type="checkbox" name="unread" value="1" {% if filters.unread %}checked{% endif %} /> Unread</label>
+  <label class="flex items-center gap-2 mt-5"><input type="checkbox" name="has_attachments" value="1" {% if filters.has_attachments %}checked{% endif %} /> Attachments</label>
+  <label>Sort
+    <select name="sort" class="w-full border rounded px-2 py-1">
+      <option value="date_desc" {% if filters.sort=='date_desc' %}selected{% endif %}>Date desc</option>
+      <option value="date_asc" {% if filters.sort=='date_asc' %}selected{% endif %}>Date asc</option>
+      <option value="sender" {% if filters.sort=='sender' %}selected{% endif %}>Sender</option>
+    </select>
+  </label>
+  <div class="md:col-span-4 flex gap-2 items-end">
+    <button class="bg-slate-900 text-white rounded px-4 py-2">Filter</button>
+    <a href="/inbox" class="text-slate-600 underline py-2">Clear</a>
+  </div>
+  <div class="md:col-span-4 border-t pt-3 mt-1 grid md:grid-cols-3 gap-2">
+    <label class="md:col-span-2">Advanced Gmail search (X-GM-RAW)
+      <input name="gm_raw" value="{{ filters.gm_raw }}" class="w-full border rounded px-2 py-1" placeholder='from:*.edu.cn newer_than:30d' />
+    </label>
+    <label>Account
+      <select name="gm_account" class="w-full border rounded px-2 py-1">
+        <option value="">—</option>
+        {% for a in accounts %}<option value="{{ a.id }}" {% if filters.gm_account|string == a.id|string %}selected{% endif %}>{{ a.email }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+</form>
+
+<div class="grid lg:grid-cols-2 gap-4">
+  <div class="border border-slate-200 rounded bg-white overflow-hidden">
+    <div class="px-3 py-2 text-xs text-slate-500 border-b">{{ total }} messages · page {{ page }}/{{ pages }}</div>
+    <ul class="divide-y max-h-[70vh] overflow-y-auto text-sm">
+      {% for m in messages %}
+      <li>
+        <a href="/inbox?{{ query_string }}&msg={{ m.id }}" class="block px-3 py-2 hover:bg-slate-50 {% if selected and selected.id==m.id %}bg-sky-50{% endif %}">
+          <div class="flex justify-between gap-2">
+            <span class="{% if m.is_unread %}font-semibold{% endif %}">{{ m.from_name or m.from_addr }}</span>
+            <span class="text-xs text-slate-400">{{ m.date_utc }}</span>
+          </div>
+          <div class="truncate">{{ m.subject }}</div>
+          <div class="truncate text-slate-500 text-xs">{{ m.snippet }}</div>
+        </a>
+      </li>
+      {% else %}
+      <li class="px-3 py-6 text-slate-500">No messages match.</li>
+      {% endfor %}
+    </ul>
+    <div class="flex gap-2 px-3 py-2 border-t text-sm">
+      {% if page > 1 %}<a class="underline" href="/inbox?{{ query_string }}&page={{ page-1 }}">Prev</a>{% endif %}
+      {% if page < pages %}<a class="underline" href="/inbox?{{ query_string }}&page={{ page+1 }}">Next</a>{% endif %}
+    </div>
+  </div>
+
+  <div class="border border-slate-200 rounded bg-white p-4 min-h-[50vh]">
+    {% if selected %}
+    <div class="text-sm mb-3">
+      <div class="text-lg font-medium">{{ selected.subject }}</div>
+      <div class="text-slate-600">{{ selected.from_name }} &lt;{{ selected.from_addr }}&gt;</div>
+      <div class="text-xs text-slate-400">{{ selected.date_utc }} · labels: {{ (selected.labels or [])|join(', ') }}</div>
+      <div class="flex flex-wrap gap-3 mt-2 text-xs">
+        <form method="post" action="/inbox/{{ selected.id }}/read">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <input type="hidden" name="unread" value="{{ 0 if selected.is_unread else 1 }}" />
+          <button class="underline">Mark {{ 'read' if selected.is_unread else 'unread' }}</button>
+        </form>
+        <form method="post" action="/inbox/{{ selected.id }}/contact">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button class="underline">Create contact from sender</button>
+        </form>
+        {% if not filters.load_images %}
+        <a class="underline" href="/inbox?{{ query_string }}&msg={{ selected.id }}&load_images=1">Load images</a>
+        {% endif %}
+      </div>
+    </div>
+    <iframe sandbox="" srcdoc="{{ html_body|e }}" class="w-full h-[45vh] border rounded bg-white"></iframe>
+    {% if thread_msgs|length > 1 %}
+    <div class="mt-4">
+      <h3 class="text-sm font-medium mb-2">Thread</h3>
+      <ul class="text-xs space-y-1">
+        {% for t in thread_msgs %}
+        <li><a class="underline" href="/inbox?msg={{ t.id }}">{{ t.date_utc }} — {{ t.subject }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="text-slate-500 text-sm">Select a message.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
