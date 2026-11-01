@@ -1,0 +1,11 @@
+{
+  "input_rows": 377,
+  "missing_english_name": 105,
+  "missing_research": 46,
+  "missing_title": 108,
+  "duplicate_emails": 0,
+  "invalid_emails": 0,
+  "output_rows": 377,
+  "usama_batch": 189,
+  "faizan_batch": 188
+}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
@@ -12,6 +13,10 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import base_context, flash, redirect, require_csrf
+from app.importers.china_professors import (
+    looks_like_china_professor_csv,
+    normalize_professor_dataframe,
+)
 from app.importers.tabular import (
     apply_mapping,
     guess_mapping,
@@ -26,6 +31,21 @@ templates = Jinja2Templates(directory="app/templates")
 
 # In-memory staging for import preview (single-user local app)
 _import_staging: dict[str, Any] = {}
+
+MAP_FIELDS = (
+    "email",
+    "full_name",
+    "title",
+    "institution",
+    "department",
+    "country",
+    "research_summary",
+    "recent_papers",
+    "profile_url",
+    "groups",
+    "region_type",
+    "notes",
+)
 
 
 @router.get("", response_class=HTMLResponse)
@@ -82,8 +102,32 @@ async def import_upload(
         flash(request, f"Failed to read file: {exc}", "error")
         return redirect("/contacts")
     headers = [str(c) for c in df.columns]
+    china_detected = looks_like_china_professor_csv(headers)
+    qa: dict[str, Any] | None = None
+    default_region = "other"
+    default_groups = ""
+    import_note = ""
+
+    if china_detected:
+        ready, qa = normalize_professor_dataframe(df, split_batches=True)
+        buf = io.StringIO()
+        ready.to_csv(buf, index=False)
+        data = buf.getvalue().encode("utf-8")
+        filename = (filename.rsplit(".", 1)[0] if "." in filename else filename) + "_mailpilot.csv"
+        df = ready
+        headers = [str(c) for c in df.columns]
+        default_region = "china"
+        # Row groups already set by normalizer; keep form empty so per-row batches survive
+        default_groups = ""
+        import_note = (
+            "Detected China professors CSV. Auto-normalized: English names preferred, "
+            "country=China, region=china, groups (professor/china/botany + usama_batch|"
+            "faizan_batch), cleaned 'not stated' titles/research."
+        )
+        flash(request, import_note, "success")
+
     mapping = guess_mapping(headers)
-    preview = df.head(20).fillna("").to_dict(orient="records")
+    preview = df.head(20).fillna("").astype(str).to_dict(orient="records")
     _import_staging.clear()
     _import_staging.update(
         {
@@ -94,6 +138,11 @@ async def import_upload(
             "headers": headers,
             "mapping": mapping,
             "preview": preview,
+            "china_detected": china_detected,
+            "qa": qa,
+            "default_region": default_region,
+            "default_groups": default_groups,
+            "import_note": import_note,
         }
     )
     return redirect("/contacts/import/map")
@@ -104,7 +153,13 @@ def import_map(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
     if not _import_staging:
         flash(request, "Upload a file first.", "error")
         return redirect("/contacts")
-    ctx = base_context(request, db, active="contacts", staging=_import_staging)
+    ctx = base_context(
+        request,
+        db,
+        active="contacts",
+        staging=_import_staging,
+        map_fields=MAP_FIELDS,
+    )
     return templates.TemplateResponse(request, "contacts_import.html", ctx)
 
 
@@ -121,22 +176,10 @@ async def import_commit(
         return redirect("/contacts")
     form = await request.form()
     mapping: dict[str, str] = {}
-    for key in (
-        "email",
-        "full_name",
-        "title",
-        "institution",
-        "department",
-        "country",
-        "research_summary",
-        "recent_papers",
-        "profile_url",
-        "groups",
-    ):
+    for key in MAP_FIELDS:
         col = str(form.get(f"map_{key}", "") or "")
         if col:
             mapping[key] = col
-    from app.importers.tabular import load_tabular
 
     df, _ = load_tabular(
         _import_staging["data"],
@@ -158,6 +201,7 @@ async def import_commit(
             "profile_url": c.profile_url,
             "groups": c.groups or [],
             "region_type": c.region_type,
+            "notes": c.notes or "",
             "id": c.id,
         }
         for c in db.scalars(select(Contact)).all()
@@ -188,6 +232,7 @@ async def import_commit(
         "updated": report.updated,
         "skipped_duplicate": report.skipped_duplicate,
         "invalid": report.invalid,
+        "qa": _import_staging.get("qa"),
     }
     _import_staging["rejects_csv"] = rejects_to_csv(report.rejects)
     flash(

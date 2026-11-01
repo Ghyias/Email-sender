@@ -11,18 +11,66 @@ from typing import Any, Optional
 import pandas as pd
 from email_validator import EmailNotValidError, validate_email
 
+_NOT_STATED = re.compile(r"^\s*(not\s*stated|n/?a|none|unknown|-)\s*$", re.I)
+
 HEADER_ALIASES: dict[str, list[str]] = {
     "email": ["email", "e-mail", "mail", "email address", "e mail"],
-    "full_name": ["name", "full name", "full_name", "professor", "contact"],
+    # Prefer English name columns before generic full_name when guessing
+    "full_name": [
+        "professor_name_en",
+        "name_en",
+        "english_name",
+        "full_name",
+        "name",
+        "professor",
+        "contact",
+        "professor_name_cn",
+    ],
     "title": ["title", "position", "rank"],
-    "institution": ["institution", "university", "university/institution", "affiliation", "org", "organization"],
+    "institution": [
+        "university_en",
+        "institution",
+        "university",
+        "university/institution",
+        "affiliation",
+        "org",
+        "organization",
+        "university_cn",
+    ],
     "department": ["department", "dept", "faculty"],
-    "country": ["country", "nation", "region"],
-    "research_summary": ["research", "interests", "research interests", "summary", "research_summary"],
+    "country": ["country", "nation"],
+    "research_summary": [
+        "research_direction",
+        "research_summary",
+        "research interests",
+        "research",
+        "interests",
+        "summary",
+    ],
     "recent_papers": ["papers", "recent papers", "publications", "recent_papers"],
-    "profile_url": ["url", "homepage", "profile", "website", "profile_url"],
+    "profile_url": [
+        "profile_url",
+        "homepage",
+        "website",
+        "email_source_url",
+        "source_url",
+        "url",
+        "profile",
+    ],
     "groups": ["group", "groups", "tag", "tags"],
+    "region_type": ["region_type", "region type", "outreach_region"],
+    "notes": ["notes", "note", "comment", "comments"],
 }
+
+
+def clean_field(value: Any) -> str:
+    """Strip placeholders like 'not stated' / N/A used in scraped CSVs."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    text = str(value).strip()
+    if _NOT_STATED.match(text):
+        return ""
+    return text
 
 COUNTRY_TZ: dict[str, str] = {
     "china": "Asia/Shanghai",
@@ -68,10 +116,25 @@ def guess_mapping(headers: list[str]) -> dict[str, str]:
     used: set[str] = set()
     normalized = [(h, re.sub(r"\s+", " ", str(h or "").strip().lower())) for h in headers]
     for field_key, aliases in HEADER_ALIASES.items():
+        # Exact alias match first (order in aliases = priority)
+        matched = False
+        for alias in aliases:
+            for orig, norm in normalized:
+                if orig in used:
+                    continue
+                if norm == alias:
+                    mapping[field_key] = orig
+                    used.add(orig)
+                    matched = True
+                    break
+            if matched:
+                break
+        if matched:
+            continue
         for orig, norm in normalized:
             if orig in used:
                 continue
-            if norm in aliases or any(a in norm for a in aliases):
+            if any(a in norm for a in aliases if len(a) >= 4):
                 mapping[field_key] = orig
                 used.add(orig)
                 break
@@ -179,8 +242,7 @@ def apply_mapping(df: pd.DataFrame, mapping: dict[str, str]) -> list[dict[str, A
         for field_key, col in mapping.items():
             if col not in df.columns:
                 continue
-            val = series.get(col, "")
-            item[field_key] = "" if pd.isna(val) else str(val).strip()
+            item[field_key] = clean_field(series.get(col, ""))
         rows.append(item)
     return rows
 
@@ -211,6 +273,16 @@ def merge_contact(
     return merged, ("updated" if changed else "skipped_duplicate")
 
 
+def _merge_group_lists(*lists: list[str] | None) -> list[str]:
+    merged: list[str] = []
+    for lst in lists:
+        for g in lst or []:
+            g = str(g).strip()
+            if g and g not in merged:
+                merged.append(g)
+    return merged
+
+
 def prepare_contacts(
     rows: list[dict[str, Any]],
     *,
@@ -237,19 +309,33 @@ def prepare_contacts(
             report.rejects.append({**row, "email": email, "error": "duplicate_in_file"})
             continue
         seen_in_file.add(email)
+
+        country = clean_field(row.get("country", ""))
+        title = clean_field(row.get("title", ""))
+        research = clean_field(row.get("research_summary", ""))
+        row_region = clean_field(row.get("region_type", "")).lower()
+        if row_region not in {"china", "western", "other"}:
+            row_region = ""
+        effective_region = row_region or region_type or "other"
+        if not country and effective_region == "china":
+            country = "China"
+
         item = {
             "email": email,
-            "full_name": row.get("full_name", ""),
-            "title": row.get("title", ""),
-            "institution": row.get("institution", ""),
-            "department": row.get("department", ""),
-            "country": row.get("country", ""),
-            "timezone": suggest_timezone(str(row.get("country", ""))) or row.get("timezone"),
-            "research_summary": row.get("research_summary", ""),
-            "recent_papers": row.get("recent_papers", ""),
-            "profile_url": row.get("profile_url", ""),
-            "groups": groups or _parse_groups(row.get("groups")),
-            "region_type": region_type,
+            "full_name": clean_field(row.get("full_name", "")),
+            "title": title or ("Professor" if effective_region == "china" else ""),
+            "institution": clean_field(row.get("institution", "")),
+            "department": clean_field(row.get("department", "")),
+            "country": country,
+            "timezone": suggest_timezone(country)
+            or clean_field(row.get("timezone", ""))
+            or None,
+            "research_summary": research,
+            "recent_papers": clean_field(row.get("recent_papers", "")),
+            "profile_url": clean_field(row.get("profile_url", "")),
+            "groups": _merge_group_lists(groups, _parse_groups(row.get("groups"))),
+            "region_type": effective_region,
+            "notes": clean_field(row.get("notes", "")),
             "source_file": source_file,
         }
         if email in existing_by_email:

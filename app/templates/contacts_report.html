@@ -9,7 +9,19 @@
   <li>Skipped duplicates: {{ report.skipped_duplicate }}</li>
   <li>Invalid: {{ report.invalid }}</li>
 </ul>
+{% if report.qa %}
+<div class="text-sm text-slate-600 mb-4">
+  <p class="font-medium">China CSV QA</p>
+  <ul class="list-disc pl-5 text-xs mt-1">
+    <li>Ready rows: {{ report.qa.output_rows }} / {{ report.qa.input_rows }}</li>
+    <li>Missing EN name: {{ report.qa.missing_english_name }} · missing research: {{ report.qa.missing_research }}</li>
+    <li>Batches usama/faizan: {{ report.qa.usama_batch }} / {{ report.qa.faizan_batch }}</li>
+  </ul>
+</div>
+{% endif %}
 <a class="underline text-sm" href="/contacts/import/rejects.csv">Download rejects CSV</a>
+<p class="text-sm mt-3">Next: <a class="underline" href="/guide">Workflow Guide</a> ·
+  <a class="underline" href="/campaigns/new">New campaign</a> (filter by <code>usama_batch</code> / <code>faizan_batch</code>)</p>
 {% else %}
 <p class="text-slate-500">No report.</p>
 {% endif %}
